@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VisualAI — Real-Time AI Video Editing</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root[data-theme="dark"]{
+  --bg:#0a0a0c;--bg2:#0f0f12;--surface:#16161a;--card:#1a1a20;
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+  --text:#f5f5f7;--text2:#c4c4cc;--muted:#7a7a85;--muted2:#52525b;
+  --accent:#ff4d2e;--accent2:#ff6b3d;
+  --grad-1:#ff4d2e;--grad-2:#ff8a3d;--grad-3:#ffd54a;
+  --noise-opacity:0.04;
+}
+
+:root[data-theme="light"]{
+  --bg:#fafaf7;--bg2:#f4f4ee;--surface:#ffffff;--card:#ffffff;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);
+  --text:#0a0a0c;--text2:#3a3a45;--muted:#7a7a85;--muted2:#a8a8b3;
+  --accent:#e63d1e;--accent2:#ff6b3d;
+  --grad-1:#e63d1e;--grad-2:#ff6b3d;--grad-3:#ffb83d;
+  --noise-opacity:0.025;
+}
+
+html{scroll-behavior:smooth;}
+
+body{
+  font-family:'Geist',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  transition:background 0.4s,color 0.4s;
+}
+
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:var(--noise-opacity);
+  pointer-events:none;
+  z-index:1000;
+  mix-blend-mode:overlay;
+}
+
+body::after{
+  content:'';
+  position:fixed;
+  top:-30%;right:-20%;
+  width:80%;height:80%;
+  background:radial-gradient(circle,rgba(255,77,46,0.12) 0%,transparent 60%);
+  filter:blur(80px);
+  pointer-events:none;
+  z-index:0;
+  animation:float 20s ease-in-out infinite;
+}
+
+@keyframes float{
+  0%,100%{transform:translate(0,0) scale(1);}
+  50%{transform:translate(-5%,5%) scale(1.1);}
+}
+
+/* NAV */
+nav{
+  position:fixed;
+  top:0;left:0;right:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:18px 40px;
+  background:rgba(10,10,12,0.7);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  transition:background 0.4s;
+}
+
+[data-theme="light"] nav{background:rgba(250,250,247,0.7);}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-family:'Instrument Serif',serif;
+  font-size:1.5rem;
+  font-style:italic;
+  text-decoration:none;
+  color:var(--text);
+}
+
+.brand-mark{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-3));
+  border-radius:50%;
+  position:relative;
+  overflow:hidden;
+}
+
+.brand-mark::before{
+  content:'';
+  position:absolute;
+  inset:6px;
+  background:var(--bg);
+  border-radius:50%;
+}
+
+.brand-mark::after{
+  content:'';
+  position:absolute;
+  inset:11px;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-3));
+  border-radius:50%;
+  animation:pulse-mark 2s ease-in-out infinite;
+}
+
+@keyframes pulse-mark{
+  0%,100%{transform:scale(1);opacity:1;}
+  50%{transform:scale(0.7);opacity:0.7;}
+}
+
+.nav-links{display:flex;align-items:center;gap:36px;}
+.nav-link{
+  font-size:0.85rem;
+  color:var(--text2);
+  text-decoration:none;
+  transition:color 0.2s;
+  position:relative;
+}
+.nav-link:hover{color:var(--text);}
+.nav-link::after{
+  content:'';
+  position:absolute;
+  left:0;bottom:-4px;
+  width:0;height:1px;
+  background:var(--accent);
+  transition:width 0.3s;
+}
+.nav-link:hover::after{width:100%;}
+
+.nav-actions{display:flex;align-items:center;gap:12px;}
+
+.theme-toggle{
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;
+  border:1px solid var(--border2);
+  border-radius:50%;
+  cursor:pointer;
+  color:var(--text2);
+  transition:all 0.3s;
+}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent);transform:rotate(15deg);}
+
+.btn-ghost{
+  padding:9px 18px;
+  font-size:0.83rem;font-weight:500;
+  background:transparent;
+  border:1px solid var(--border2);
+  color:var(--text);
+  border-radius:50px;
+  cursor:pointer;
+  text-decoration:none;
+  transition:all 0.2s;
+}
+.btn-ghost:hover{border-color:var(--text);}
+
+.btn-primary{
+  padding:9px 20px;
+  font-size:0.83rem;font-weight:500;
+  background:var(--text);
+  color:var(--bg);
+  border:none;
+  border-radius:50px;
+  cursor:pointer;
+  text-decoration:none;
+  transition:all 0.2s;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,77,46,0.2);}
+
+/* HERO */
+.hero{
+  position:relative;
+  z-index:1;
+  padding:140px 40px 80px;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.hero-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 14px;
+  background:rgba(255,77,46,0.08);
+  border:1px solid rgba(255,77,46,0.2);
+  border-radius:50px;
+  font-family:'Geist Mono',monospace;
+  font-size:0.7rem;
+  letter-spacing:0.5px;
+  color:var(--accent);
+  margin-bottom:32px;
+  align-self:flex-start;
+  animation:slide-down 0.8s ease-out;
+}
+
+.hero-tag-dot{
+  width:6px;height:6px;
+  background:var(--accent);
+  border-radius:50%;
+  animation:pulse-mark 1.5s infinite;
+}
+
+@keyframes slide-down{
+  from{opacity:0;transform:translateY(-10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.hero-headline{
+  font-family:'Instrument Serif',serif;
+  font-size:clamp(3rem,9vw,8rem);
+  font-weight:400;
+  line-height:0.95;
+  letter-spacing:-2px;
+  max-width:1100px;
+  margin-bottom:36px;
+  animation:slide-up 1s ease-out 0.2s both;
+}
+
+@keyframes slide-up{
+  from{opacity:0;transform:translateY(30px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.hero-headline em{
+  font-style:italic;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-2),var(--grad-3));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.hero-headline .strike{
+  position:relative;
+  display:inline-block;
+}
+
+.hero-headline .strike::after{
+  content:'';
+  position:absolute;
+  left:-4%;right:-4%;
+  top:55%;
+  height:4px;
+  background:var(--accent);
+  transform:rotate(-2deg);
+  animation:draw-line 1s ease-out 1.2s both;
+  transform-origin:left;
+}
+
+@keyframes draw-line{
+  from{transform:rotate(-2deg) scaleX(0);}
+  to{transform:rotate(-2deg) scaleX(1);}
+}
+
+.hero-sub{
+  font-size:1.15rem;
+  color:var(--text2);
+  max-width:560px;
+  line-height:1.6;
+  margin-bottom:48px;
+  animation:slide-up 1s ease-out 0.4s both;
+}
+
+.hero-cta{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  animation:slide-up 1s ease-out 0.6s both;
+}
+
+.btn-cta{
+  padding:16px 32px;
+  font-size:0.95rem;font-weight:500;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:50px;
+  cursor:pointer;
+  text-decoration:none;
+  transition:all 0.3s;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  position:relative;
+  overflow:hidden;
+}
+
+.btn-cta::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-3));
+  opacity:0;
+  transition:opacity 0.3s;
+}
+.btn-cta:hover::before{opacity:1;}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,77,46,0.35);}
+.btn-cta span{position:relative;z-index:1;}
+
+.btn-cta-arrow{transition:transform 0.3s;position:relative;z-index:1;}
+.btn-cta:hover .btn-cta-arrow{transform:translateX(4px);}
+
+.btn-secondary-cta{
+  padding:16px 32px;
+  font-size:0.95rem;font-weight:500;
+  background:transparent;
+  border:1px solid var(--border2);
+  color:var(--text);
+  border-radius:50px;
+  text-decoration:none;
+  transition:all 0.2s;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+.btn-secondary-cta:hover{border-color:var(--text);}
+
+.hero-meta{
+  display:flex;
+  gap:32px;
+  margin-top:60px;
+  padding-top:32px;
+  border-top:1px solid var(--border);
+  flex-wrap:wrap;
+  animation:slide-up 1s ease-out 0.8s both;
+}
+
+.meta-item{display:flex;flex-direction:column;gap:4px;}
+
+.meta-num{
+  font-family:'Instrument Serif',serif;
+  font-size:2rem;
+  line-height:1;
+}
+
+.meta-label{
+  font-family:'Geist Mono',monospace;
+  font-size:0.7rem;
+  color:var(--muted);
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+
+/* MARQUEE */
+.marquee{
+  position:relative;
+  z-index:1;
+  padding:60px 0;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background:var(--bg2);
+  overflow:hidden;
+  white-space:nowrap;
+  transition:background 0.4s;
+}
+
+.marquee-track{
+  display:inline-flex;
+  gap:80px;
+  animation:marquee-scroll 30s linear infinite;
+}
+
+@keyframes marquee-scroll{
+  to{transform:translateX(calc(-50% - 40px));}
+}
+
+.marquee-item{
+  font-family:'Instrument Serif',serif;
+  font-style:italic;
+  font-size:3rem;
+  color:var(--muted);
+  display:inline-flex;
+  align-items:center;
+  gap:80px;
+}
+
+.marquee-item::after{
+  content:'✦';
+  font-size:1.4rem;
+  color:var(--accent);
+  font-style:normal;
+}
+
+/* DEMO */
+.demo{
+  position:relative;
+  z-index:1;
+  padding:120px 40px;
+}
+
+.demo-container{max-width:1300px;margin:0 auto;}
+
+.section-eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-family:'Geist Mono',monospace;
+  font-size:0.72rem;
+  letter-spacing:2px;
+  color:var(--accent);
+  text-transform:uppercase;
+  margin-bottom:20px;
+}
+
+.section-eyebrow::before{
+  content:'';
+  width:24px;height:1px;
+  background:var(--accent);
+}
+
+.section-title{
+  font-family:'Instrument Serif',serif;
+  font-size:clamp(2.4rem,5vw,4.5rem);
+  line-height:1;
+  letter-spacing:-1.5px;
+  margin-bottom:24px;
+  max-width:900px;
+}
+
+.section-title em{font-style:italic;color:var(--accent);}
+
+.section-desc{
+  font-size:1.05rem;
+  color:var(--text2);
+  max-width:600px;
+  line-height:1.7;
+  margin-bottom:60px;
+}
+
+.demo-mockup{
+  position:relative;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:24px;
+  overflow:hidden;
+  aspect-ratio:16/9;
+  box-shadow:0 40px 100px rgba(0,0,0,0.3);
+}
+
+.mockup-header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+
+.mockup-dots{display:flex;gap:6px;}
+.mockup-dot{width:11px;height:11px;border-radius:50%;}
+.mockup-dot:nth-child(1){background:#ff5f57;}
+.mockup-dot:nth-child(2){background:#febc2e;}
+.mockup-dot:nth-child(3){background:#28c840;}
+
+.mockup-url{
+  font-family:'Geist Mono',monospace;
+  font-size:0.72rem;
+  color:var(--muted);
+  margin-left:14px;
+  padding:5px 14px;
+  background:var(--bg);
+  border-radius:6px;
+  flex:1;
+  max-width:380px;
+}
+
+.mockup-body{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  height:calc(100% - 50px);
+  gap:1px;
+  background:var(--border);
+}
+
+.mockup-pane{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.mockup-pane.input{
+  background:linear-gradient(135deg,#1a1a20 0%,#2a2a35 100%);
+}
+
+[data-theme="light"] .mockup-pane.input{
+  background:linear-gradient(135deg,#e8e8e0 0%,#d0d0c5 100%);
+}
+
+.mockup-pane.output{
+  background:linear-gradient(135deg,#ff4d2e 0%,#ff8a3d 50%,#ffd54a 100%);
+}
+
+.mockup-figure{
+  width:60%;height:75%;
+  background:rgba(255,255,255,0.1);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  position:relative;
+  backdrop-filter:blur(20px);
+}
+
+.mockup-figure::before{
+  content:'';
+  position:absolute;
+  top:25%;left:35%;
+  width:8px;height:8px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.4);
+  box-shadow:25px 0 0 rgba(0,0,0,0.4);
+}
+
+.mockup-pane.output .mockup-figure{
+  background:rgba(0,0,0,0.2);
+  box-shadow:0 0 60px rgba(255,255,255,0.4),inset 0 0 80px rgba(255,255,255,0.2);
+}
+
+.mockup-label{
+  position:absolute;
+  top:14px;left:14px;
+  font-family:'Geist Mono',monospace;
+  font-size:0.65rem;
+  letter-spacing:1.5px;
+  background:rgba(0,0,0,0.6);
+  color:#fff;
+  padding:5px 12px;
+  border-radius:4px;
+  backdrop-filter:blur(10px);
+}
+
+.mockup-prompt{
+  position:absolute;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:50px;
+  padding:8px 18px;
+  font-size:0.78rem;
+  color:#fff;
+  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.prompt-cursor{
+  display:inline-block;
+  width:1.5px;height:14px;
+  background:var(--accent);
+  animation:blink 1s infinite;
+}
+
+@keyframes blink{
+  0%,50%{opacity:1;}
+  51%,100%{opacity:0;}
+}
+
+/* FEATURES */
+.features{
+  position:relative;
+  z-index:1;
+  padding:120px 40px;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  transition:background 0.4s;
+}
+
+.features-container{max-width:1300px;margin:0 auto;}
+
+.features-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+  border-radius:20px;
+  overflow:hidden;
+  margin-top:60px;
+}
+
+.feature{
+  background:var(--bg2);
+  padding:40px 32px;
+  transition:background 0.3s;
+}
+
+.feature:hover{background:var(--card);}
+
+.feature-num{
+  font-family:'Geist Mono',monospace;
+  font-size:0.7rem;
+  color:var(--muted);
+  margin-bottom:24px;
+  letter-spacing:1.5px;
+}
+
+.feature-icon{
+  width:48px;height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-3));
+  border-radius:14px;
+  font-size:1.4rem;
+  margin-bottom:24px;
+  box-shadow:0 8px 24px rgba(255,77,46,0.25);
+}
+
+.feature h3{
+  font-family:'Instrument Serif',serif;
+  font-size:1.7rem;
+  font-weight:400;
+  letter-spacing:-0.5px;
+  margin-bottom:12px;
+  line-height:1.1;
+}
+
+.feature h3 em{font-style:italic;color:var(--accent);}
+
+.feature p{
+  font-size:0.92rem;
+  color:var(--text2);
+  line-height:1.6;
+}
+
+/* HOW */
+.how{
+  position:relative;
+  z-index:1;
+  padding:120px 40px;
+}
+
+.how-container{max-width:1100px;margin:0 auto;}
+
+.steps{margin-top:80px;}
+
+.step{
+  display:grid;
+  grid-template-columns:120px 1fr 200px;
+  gap:40px;
+  align-items:start;
+  padding:32px 0;
+  border-bottom:1px solid var(--border);
+  transition:padding-left 0.3s;
+}
+
+.step:hover{padding-left:20px;}
+.step:last-child{border-bottom:none;}
+
+.step-num{
+  font-family:'Instrument Serif',serif;
+  font-size:5rem;
+  line-height:0.85;
+  color:var(--accent);
+  font-style:italic;
+}
+
+.step-content h3{
+  font-family:'Instrument Serif',serif;
+  font-size:2.2rem;
+  font-weight:400;
+  letter-spacing:-0.5px;
+  margin-bottom:10px;
+  line-height:1.1;
+}
+
+.step-content p{
+  font-size:0.98rem;
+  color:var(--text2);
+  line-height:1.7;
+  max-width:500px;
+}
+
+.step-visual{
+  font-family:'Geist Mono',monospace;
+  font-size:0.78rem;
+  color:var(--muted);
+  text-align:right;
+}
+
+.step-visual span{
+  display:block;
+  color:var(--accent);
+  font-size:0.9rem;
+  margin-bottom:4px;
+  font-family:'Geist',sans-serif;
+  font-weight:500;
+}
+
+/* PRICING */
+.pricing{
+  position:relative;
+  z-index:1;
+  padding:120px 40px;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  transition:background 0.4s;
+}
+
+.pricing-container{max-width:1100px;margin:0 auto;text-align:center;}
+
+.pricing-card{
+  margin-top:60px;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:24px;
+  padding:60px 40px;
+  position:relative;
+  overflow:hidden;
+}
+
+.pricing-card::before{
+  content:'';
+  position:absolute;
+  top:-50%;right:-20%;
+  width:60%;height:200%;
+  background:radial-gradient(ellipse at center,rgba(255,77,46,0.15),transparent 60%);
+  filter:blur(40px);
+}
+
+.pricing-content{position:relative;z-index:1;}
+
+.pricing-tag{
+  display:inline-block;
+  padding:6px 14px;
+  background:rgba(255,77,46,0.12);
+  border:1px solid rgba(255,77,46,0.25);
+  border-radius:50px;
+  font-family:'Geist Mono',monospace;
+  font-size:0.7rem;
+  letter-spacing:1.2px;
+  color:var(--accent);
+  margin-bottom:24px;
+}
+
+.pricing-price{
+  font-family:'Instrument Serif',serif;
+  font-size:5rem;
+  line-height:1;
+  margin-bottom:8px;
+  letter-spacing:-2px;
+}
+
+.pricing-price em{
+  font-style:italic;
+  background:linear-gradient(135deg,var(--grad-1),var(--grad-3));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.pricing-sub{
+  font-size:0.95rem;
+  color:var(--muted);
+  margin-bottom:36px;
+}
+
+.pricing-features{
+  list-style:none;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  max-width:340px;
+  margin:0 auto 36px;
+  text-align:left;
+}
+
+.pricing-features li{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:0.92rem;
+  color:var(--text2);
+}
+
+.pricing-features li::before{
+  content:'✦';
+  color:var(--accent);
+}
+
+/* FOOTER */
+footer{
+  position:relative;
+  z-index:1;
+  padding:60px 40px 40px;
+  border-top:1px solid var(--border);
+}
+
+.footer-content{
+  max-width:1300px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  gap:40px;
+}
+
+.footer-brand{max-width:320px;}
+
+.footer-brand p{
+  font-size:0.85rem;
+  color:var(--muted);
+  margin-top:16px;
+  line-height:1.6;
+}
+
+.footer-cols{display:flex;gap:60px;flex-wrap:wrap;}
+
+.footer-col h4{
+  font-family:'Geist Mono',monospace;
+  font-size:0.7rem;
+  letter-spacing:1.5px;
+  color:var(--muted);
+  text-transform:uppercase;
+  margin-bottom:18px;
+}
+
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.footer-col a{
+  font-size:0.88rem;
+  color:var(--text2);
+  text-decoration:none;
+  transition:color 0.2s;
+}
+.footer-col a:hover{color:var(--accent);}
+
+.footer-bottom{
+  max-width:1300px;
+  margin:60px auto 0;
+  padding-top:24px;
+  border-top:1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  font-family:'Geist Mono',monospace;
+  font-size:0.72rem;
+  color:var(--muted);
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+@media (max-width:768px){
+  nav{padding:14px 20px;}
+  .nav-links{display:none;}
+  .hero{padding:100px 20px 60px;}
+  .demo,.features,.how,.pricing{padding:80px 20px;}
+  .step{grid-template-columns:60px 1fr;gap:20px;}
+  .step-num{font-size:3rem;}
+  .step-content h3{font-size:1.5rem;}
+  .step-visual{display:none;}
+  .footer-content{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="brand">
+    <div class="brand-mark"></div>
+    VisualAI
+  </a>
+  <div class="nav-links">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="#pricing" class="nav-link">Pricing</a>
+    <a href="#" class="nav-link">Docs</a>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg id="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <a href="#" class="btn-ghost">Log in</a>
+    <a href="#" class="btn-primary">Get started →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">
+    <span class="hero-tag-dot"></span>
+    POWERED BY LUCY EDIT · REAL-TIME
+  </div>
+  <h1 class="hero-headline">
+    Edit video<br/>
+    <em>as you live it.</em><br/>
+    <span class="strike">No render times.</span>
+  </h1>
+  <p class="hero-sub">
+    Type a prompt. Watch your webcam transform instantly. VisualAI uses real-time AI to restyle your live video stream the moment you describe it.
+  </p>
+  <div class="hero-cta">
+    <a href="#" class="btn-cta">
+      <span>Start free trial</span>
+      <span class="btn-cta-arrow">→</span>
+    </a>
+    <a href="#how" class="btn-secondary-cta">
+      <span>▷</span> Watch demo
+    </a>
+  </div>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <div class="meta-num">2,000</div>
+      <div class="meta-label">Free credits</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-num">~12ms</div>
+      <div class="meta-label">Latency</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-num">720p</div>
+      <div class="meta-label">Resolution</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-num">∞</div>
+      <div class="meta-label">Edits per session</div>
+    </div>
+  </div>
+</section>
+
+<section class="marquee">
+  <div class="marquee-track">
+    <span class="marquee-item">cyberpunk</span>
+    <span class="marquee-item">oil painting</span>
+    <span class="marquee-item">anime</span>
+    <span class="marquee-item">underwater</span>
+    <span class="marquee-item">space station</span>
+    <span class="marquee-item">renaissance</span>
+    <span class="marquee-item">cyberpunk</span>
+    <span class="marquee-item">oil painting</span>
+    <span class="marquee-item">anime</span>
+    <span class="marquee-item">underwater</span>
+    <span class="marquee-item">space station</span>
+    <span class="marquee-item">renaissance</span>
+  </div>
+</section>
+
+<section class="demo" id="demo">
+  <div class="demo-container">
+    <div class="section-eyebrow">See it in action</div>
+    <h2 class="section-title">Your face,<br/><em>any reality.</em></h2>
+    <p class="section-desc">
+      Two streams, one moment. The left is your camera. The right is whatever you can describe — applied frame-by-frame, in real-time, with zero perceptible delay.
+    </p>
+
+    <div class="demo-mockup">
+      <div class="mockup-header">
+        <div class="mockup-dots">
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+        </div>
+        <div class="mockup-url">visualai.app/studio</div>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-pane input">
+          <span class="mockup-label">INPUT</span>
+          <div class="mockup-figure"></div>
+        </div>
+        <div class="mockup-pane output">
+          <span class="mockup-label">AI OUTPUT</span>
+          <div class="mockup-figure"></div>
+          <div class="mockup-prompt">
+            <span style="color:var(--accent);">✦</span>
+            <span id="demo-prompt">Cyberpunk neon</span>
+            <span class="prompt-cursor"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="features-container">
+    <div class="section-eyebrow">What's inside</div>
+    <h2 class="section-title">Built for <em>creators</em>,<br/>not researchers.</h2>
+
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-num">01 / FEATURE</div>
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time, <em>actually</em></h3>
+        <p>~12ms latency between input and output. Type a prompt and the transformation happens before you finish reading this sentence.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">02 / FEATURE</div>
+        <div class="feature-icon">⏱</div>
+        <h3>Session timer</h3>
+        <p>Set sessions from 5 minutes to 3 hours. Animated countdown, auto-stop when time's up, no surprise charges.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">03 / FEATURE</div>
+        <div class="feature-icon">🎬</div>
+        <h3>Record &amp; download</h3>
+        <p>Capture your transformed stream as MP4. Use it in TikToks, presentations, streams, or just save it for the bit.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">04 / FEATURE</div>
+        <div class="feature-icon">💳</div>
+        <h3>Transparent credits</h3>
+        <p>2 credits per second. Always visible. Warning when low — but we never cut you off mid-thought.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">05 / FEATURE</div>
+        <div class="feature-icon">✦</div>
+        <h3>Quick presets</h3>
+        <p>Cyberpunk. Anime. Oil painting. Underwater. One-tap looks for when inspiration is faster than typing.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-num">06 / FEATURE</div>
+        <div class="feature-icon">🌗</div>
+        <h3>Dark &amp; light</h3>
+        <p>Built for whichever side of the screen you live on. Theme switcher persists across sessions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="how-container">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">Three steps.<br/><em>That's the whole thing.</em></h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h3>Sign up &amp; enable camera</h3>
+          <p>Create your account with email or Google. Grant browser camera access. You'll get 2,000 free credits — that's roughly 16 minutes of real-time editing.</p>
+        </div>
+        <div class="step-visual">
+          <span>~30s</span>
+          /onboarding
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h3>Type your prompt</h3>
+          <p>Describe the transformation: "make me look like an anime character", "underwater scene", "cyberpunk neon city background". The model interprets it instantly.</p>
+        </div>
+        <div class="step-visual">
+          <span>~12ms</span>
+          input → output
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h3>Record. Download. Share.</h3>
+          <p>Hit record, grab your MP4, and post it wherever you want. No watermarks on paid plans. No upload-and-wait nonsense.</p>
+        </div>
+        <div class="step-visual">
+          <span>1-click</span>
+          export
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="pricing-container">
+    <div class="section-eyebrow">Simple pricing</div>
+    <h2 class="section-title"><em>Free</em> to start.<br/>Pay only when you need more.</h2>
+
+    <div class="pricing-card">
+      <div class="pricing-content">
+        <div class="pricing-tag">⚡ FREE TRIAL</div>
+        <div class="pricing-price"><em>2,000</em></div>
+        <div class="pricing-sub">credits, free forever — no card needed</div>
+        <ul class="pricing-features">
+          <li>~16 minutes of real-time editing</li>
+          <li>Full access to Lucy Edit (lucy-2.1)</li>
+          <li>Record &amp; download MP4</li>
+          <li>All preset styles included</li>
+          <li>Top up anytime, no subscription</li>
+        </ul>
+        <a href="#" class="btn-cta">
+          <span>Claim your credits</span>
+          <span class="btn-cta-arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-content">
+    <div class="footer-brand">
+      <a href="#" class="brand">
+        <div class="brand-mark"></div>
+        VisualAI
+      </a>
+      <p>Real-time AI video editing for creators who don't have time to wait for renders.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#how">How it works</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Twitter</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 VisualAI</span>
+    <span>Powered by Lucy Edit</span>
+  </div>
+</footer>
+
+<script>
+const SUN = '<path d="M12 1v6m0 8v6m11-11h-6m-8 0H1m16.5-6.5l-4 4m-7 7l-4 4m0-15l4 4m7 7l4 4"/>';
+const MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const cur = html.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme',next);
+  localStorage.setItem('visualai-theme',next);
+  document.getElementById('theme-icon').innerHTML = next === 'dark' ? MOON : SUN;
+}
+
+const saved = localStorage.getItem('visualai-theme');
+if (saved) {
+  document.documentElement.setAttribute('data-theme',saved);
+  document.getElementById('theme-icon').innerHTML = saved === 'dark' ? MOON : SUN;
+}
+
+const PROMPTS = ['Cyberpunk neon','Oil painting','Anime style','Underwater scene','Space station','Renaissance art'];
+let pi = 0;
+setInterval(()=>{
+  pi = (pi + 1) % PROMPTS.length;
+  document.getElementById('demo-prompt').textContent = PROMPTS[pi];
+},2200);
+</script>
+</body>
+</html>
